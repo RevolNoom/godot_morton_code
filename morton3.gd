@@ -29,50 +29,71 @@ static func y(decoded: int) -> int:
 static func z(decoded: int) -> int:
 	return decoded >> 42
 
+
+#### ARITHMETICS ####
+
+static func inc_x(code: int) -> int:
+	var x_sum = ((code | _ZY_MASK) + 1)
+	return ((x_sum & _X_MASK) | (code & _ZY_MASK))
+
+static func inc_y(code: int) -> int:
+	var y_sum = ((code | _ZX_MASK) + 2)
+	return ((y_sum & _Y_MASK) | (code & _ZX_MASK))
+
+static func inc_z(code: int) -> int:
+	var z_sum = ((code | _YX_MASK) + 4)
+	return ((z_sum & _Z_MASK) | (code & _YX_MASK))
+
+static func dec_x(code: int) -> int:
+	var x_diff = (code & _X_MASK) - 1
+	return ((x_diff & _X_MASK) | (code & _ZY_MASK))
+
+static func dec_y(code: int) -> int:
+	var y_diff = (code & _Y_MASK) - 2
+	return ((y_diff & _Y_MASK) | (code & _ZX_MASK))
+
+static func dec_z(code: int) -> int:
+	var z_diff = (code & _Z_MASK) - 4
+	return ((z_diff & _Z_MASK) | (code & _YX_MASK))
+
+static func add(lhs: int, rhs: int):
+	var x_sum = (lhs | _ZY_MASK) + (rhs & _X_MASK)
+	var y_sum = (lhs | _ZX_MASK) + (rhs & _Y_MASK)
+	var z_sum = (lhs | _YX_MASK) + (rhs & _Z_MASK)
+	return ((x_sum & _X_MASK) | (y_sum & _Y_MASK) | (z_sum & _Z_MASK))
+
+static func sub(lhs: int, rhs: int):
+	var x_diff = (lhs & _X_MASK) - (rhs & _X_MASK)
+	var y_diff = (lhs & _Y_MASK) - (rhs & _Y_MASK)
+	var z_diff = (lhs & _Z_MASK) - (rhs & _Z_MASK)
+	return ((x_diff & _X_MASK) | (y_diff & _Y_MASK) | (z_diff & _Z_MASK))
+
+
+#### IMPLEMENTATION DETAILS ####
+
 ## Encode a value using Magic Bits algorithm
 static func _encodeMB64(x: int) -> int:
-	
-	x = ((x & 0b00000000_00000000_00000000_00000000_00000000_00011111_00000000_00000000) << 32 | x) \
-			& 0b00000000_00011111_00000000_00000000_00000000_00000000_11111111_11111111
-			
-	x = ((x & 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000) << 16 | x) \
-			& 0b00000000_00011111_00000000_00000000_11111111_00000000_00000000_11111111
-			
-	x = ((x & 0b00000000_00010000_00000000_00000000_11110000_00000000_00000000_11110000) << 8 | x) \
-			& 0b00010000_00001111_00000000_11110000_00001111_00000000_11110000_00001111
-			
-	x = ((x & 0b00000000_00001100_00000000_11000000_00001100_00000000_11000000_00001100) << 4 | x)\
-			& 0b00010000_11000011_00001100_00110000_11000011_00001100_00110000_11000011
-			
-	x = ((x & 0b00010000_10000010_00001000_00100000_10000010_00001000_00100000_10000010) << 2 | x)\
-			& 0b00010010_01001001_00100100_10010010_01001001_00100100_10010010_01001001
-	
+	x &= 0x1FFFFF
+	x = (x ^ (x<<32)) & 0b00000000_00011111_00000000_00000000_00000000_00000000_11111111_11111111
+	x = (x ^ (x<<16)) & 0b00000000_00011111_00000000_00000000_11111111_00000000_00000000_11111111
+	x = (x ^ (x<<8))  & 0b00010000_00001111_00000000_11110000_00001111_00000000_11110000_00001111
+	x = (x ^ (x<<4))  & 0b00010000_11000011_00001100_00110000_11000011_00001100_00110000_11000011
+	x = (x ^ (x<<2))  & _INTERPOSITION
 	return x
 
 
 ## Decode a value using Magic Bits algorithm
 static func _decodeMB64(x: int) -> int:
-	x = ((x & 0b0000_001000_001000_001000_001000_001000_001000_001000_001000_001000_001000) >> 2 | x)\
-			& 0b0001_000011_000011_000011_000011_000011_000011_000011_000011_000011_000011
-			
-	x = ((x & 0b0000_000011_000000_000011_000000_000011_000000_000011_000000_000011_000000) >> 4 | x)\
-			& 0b0001_000000_001111_000000_001111_000000_001111_000000_001111_000000_001111
-
-	x = ((x & 0b00010000_00000000_00000000_11110000_00000000_00000000_11110000_00000000) >> 8 | x)\
-			& 0b00000000_00011111_00000000_00000000_11111111_00000000_00000000_11111111
-
-	x = ((x & 0b00000000_00000000_00000000_00000000_11111111_00000000_00000000_00000000) >> 16 | x)\
-			& 0b00000000_00011111_00000000_00000000_00000000_00000000_11111111_11111111
-	
-	x = ((x & 0b00000000_00011111_00000000_00000000_00000000_00000000_00000000_00000000) >> 32 | x)\
-			& 0b00000000_00000000_00000000_00000000_00000000_00011111_11111111_11111111
-	
+	x &= _INTERPOSITION
+	x = (x ^ (x>>2))  & 0b00010000_11000011_00001100_00110000_11000011_00001100_00110000_11000011
+	x = (x ^ (x>>4))  & 0b00010000_00001111_00000000_11110000_00001111_00000000_11110000_00001111
+	x = (x ^ (x>>8))  & 0b00000000_00011111_00000000_00000000_11111111_00000000_00000000_11111111
+	x = (x ^ (x>>16)) & 0b00000000_00011111_00000000_00000000_00000000_00000000_11111111_11111111
+	x = (x ^ (x>>32)) & 0b00000000_00000000_00000000_00000000_00000000_00011111_11111111_11111111
 	return x
 	
-const _INTERPOSITION = 0b001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001
 
-
-static func automated_test():
+static func _automated_test():
 	var no_error = true
 	for i in range(0, floor(64.0/3)):
 		var value = 1 << i
@@ -101,5 +122,17 @@ static func automated_test():
 						int_to_bin(decode_value, 64),\
 						int_to_bin(value, 64)])
 						
+	# TODO: Add inc/dec add/sub tests
+	
 	if no_error:
 		print("All Morton3 tests passed.")
+
+
+const _INTERPOSITION = 0b001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001
+
+const _Z_MASK = _INTERPOSITION << 2
+const _Y_MASK = _INTERPOSITION << 1
+const _X_MASK = _INTERPOSITION
+const _ZY_MASK = _Z_MASK | _Y_MASK
+const _ZX_MASK = _Z_MASK | _X_MASK
+const _YX_MASK = _Y_MASK | _X_MASK
