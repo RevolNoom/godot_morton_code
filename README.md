@@ -8,3 +8,4 @@ Provide Morton code implementations in 2D and 3D.
 
 ## Credits
 - Morton code arithmetics ported from https://github.com/aavenel/mortonlib
+- Icon by Robert Dickau (from Wikipedia)
