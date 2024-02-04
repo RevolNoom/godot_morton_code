@@ -1,7 +1,7 @@
 extends Morton
 class_name Morton3
 
-## Return a 64 bits Morton code, with x, y, z bits interleaved like this:
+## Return a 64 bits Morton code, with x, y, z bits interleaved like this[br]
 ## 0b 0 z20 y20 x20 _ z19 y19 x19 z18 _ ... y0 x0
 ## The first bit is always left out
 ## Can't encode value > 2097151 (0x1FFFFF, 21 bits)
