@@ -1,53 +1,65 @@
 extends Morton
 class_name Morton3
 
-## Return a 64 bits Morton code, with x, y, z bits interleaved like this[br]
-## 0b 0 z20 y20 x20 _ z19 y19 x19 z18 _ ... y0 x0
-## The first bit is always left out
-## Can't encode value > 2097151 (0x1FFFFF, 21 bits)
+## Return a 64 bits Morton code, with x, y, z bits interleaved:[br]
+## 0 z20 y20 x20 _ z19 y19 x19 z18 _ ... _ z0 y0 x0[br]
+## [b]NOTE:[/b] The first bit is always left out.[br]
+## [b]WARNING:[/b]Can't encode value > 2097151 (0x1FFFFF, 21 bits).[br]
 static func encode64(x: int, y: int, z: int) -> int:
-	assert(not ((x|y|z) & (~0x1FFFFF)), "ERROR: Morton3 encoding values of more than 21 bits")
+	#assert(not ((x|y|z) & (~0x1FFFFF)), "ERROR: Morton3 encoding values of more than 21 bits")
 	return _encodeMB64(x) | (_encodeMB64(y)<<1) | (_encodeMB64(z)<<2)
+
+## Like [method encode64]. Encode [param v]'s x, y, z components.[br]
 static func encode64v(v: Vector3i) -> int:
 	return Morton3.encode64(v.x, v.y, v.z)
 
 
+## Decode [param code] into x, y, z components of a Vector3.[br]
 static func decode_vec3(code: int) -> Vector3:
 	return Vector3(_decodeMB64(code & _INTERPOSITION),
 					_decodeMB64((code >> 1) & _INTERPOSITION),
 					_decodeMB64((code >> 2) & _INTERPOSITION))
+					
+					
+## Decode [param code] into x, y, z components of a Vector3i.[br]
 static func decode_vec3i(code: int) -> Vector3i:
 	return Vector3i(_decodeMB64(code & _INTERPOSITION),
 					_decodeMB64((code >> 1) & _INTERPOSITION),
 					_decodeMB64((code >> 2) & _INTERPOSITION))
 
 
+## Return undecoded x-component of [param morton].[br]
 static func raw_x(morton: int) -> int:
 	return morton & _X_MASK
+## Return undecoded y-component of [param morton].[br]
 static func raw_y(morton: int) -> int:
 	return (morton>>1) & _Y_MASK
+## Return undecoded z-component of [param morton].[br]
 static func raw_z(morton: int) -> int:
 	return (morton>>2) & _Z_MASK
 
 
-static func set_x(morton: int, x_value: int) -> int:
-	return morton & (~_X_MASK) | Morton3._encodeMB64(x_value)
-static func set_y(morton: int, y_value: int) -> int:
-	return morton & (~_Y_MASK) | (Morton3._encodeMB64(y_value) << 1)
-static func set_z(morton: int, z_value: int) -> int:
-	return morton & (~_Z_MASK) | (Morton3._encodeMB64(z_value) << 2)
+## Return a copy of [param morton] with x-component set to [param new_value].[br]
+static func set_x(morton: int, new_value: int) -> int:
+	return morton & (~_X_MASK) | Morton3._encodeMB64(new_value)
+## Return a copy of [param morton] with y-component set to [param new_value].[br]
+static func set_y(morton: int, new_value: int) -> int:
+	return morton & (~_Y_MASK) | (Morton3._encodeMB64(new_value) << 1)
+## Return a copy of [param morton] with z-component set to [param new_value].[br]
+static func set_z(morton: int, new_value: int) -> int:
+	return morton & (~_Z_MASK) | (Morton3._encodeMB64(new_value) << 2)
 
 
-#### ARITHMETICS ####
-
-## ADD/SUBTRACT
-## Return a new morton code
-## with each component of @lhs added/Subtracted by @rhs counterpart 
+## Return a Morton3 code with each x, y, z component 
+## is sum of [param lhs] and [param rhs]' counterparts.[br] 
 static func add(lhs: int, rhs: int) -> int:
 	var x_sum = (lhs | _ZY_MASK) + (rhs & _X_MASK)
 	var y_sum = (lhs | _ZX_MASK) + (rhs & _Y_MASK)
 	var z_sum = (lhs | _YX_MASK) + (rhs & _Z_MASK)
 	return ((x_sum & _X_MASK) | (y_sum & _Y_MASK) | (z_sum & _Z_MASK))
+	
+## Return a Morton3 code with each x, y, z component 
+## is remainder of [param lhs] subtracted by [param rhs]' counterparts.[br] 
 static func sub(lhs: int, rhs: int) -> int:
 	var x_diff = (lhs & _X_MASK) - (rhs & _X_MASK)
 	var y_diff = (lhs & _Y_MASK) - (rhs & _Y_MASK)
@@ -55,60 +67,63 @@ static func sub(lhs: int, rhs: int) -> int:
 	return ((x_diff & _X_MASK) | (y_diff & _Y_MASK) | (z_diff & _Z_MASK))
 
 
-## INCREMENTATIONS
+## Return a copy of [param code] with x-component added by 1.[br]
 static func inc_x(code: int) -> int:
 	var x_sum = ((code | _ZY_MASK) + 1)
 	return ((x_sum & _X_MASK) | (code & _ZY_MASK))
+## Return a copy of [param code] with y-component added by 1.[br]
 static func inc_y(code: int) -> int:
 	var y_sum = ((code | _ZX_MASK) + 2)
 	return ((y_sum & _Y_MASK) | (code & _ZX_MASK))
+## Return a copy of [param code] with z-component added by 1.[br]
 static func inc_z(code: int) -> int:
 	var z_sum = ((code | _YX_MASK) + 4)
 	return ((z_sum & _Z_MASK) | (code & _YX_MASK))
 
-## DECREMENTATIONS
+## Return a copy of [param code] with x-component subtracted by 1.[br]
 static func dec_x(code: int) -> int:
 	var x_diff = (code & _X_MASK) - 1
 	return ((x_diff & _X_MASK) | (code & _ZY_MASK))
+## Return a copy of [param code] with y-component subtracted by 1.[br]
 static func dec_y(code: int) -> int:
 	var y_diff = (code & _Y_MASK) - 2
 	return ((y_diff & _Y_MASK) | (code & _ZX_MASK))
+## Return a copy of [param code] with z-component subtracted by 1.[br]
 static func dec_z(code: int) -> int:
 	var z_diff = (code & _Z_MASK) - 4
 	return ((z_diff & _Z_MASK) | (code & _YX_MASK))
 
 
-### COMPARISONS
-
-## Greater Than >
-## Return true if all components of @lhs is greater than @rhs counterpart
+## Return true if all components of [param lhs] 
+## is greater than [param rhs] counterparts.[br]
 static func gt(lhs: int, rhs: int) -> bool:
 	return (lhs & _X_MASK) > (rhs & _X_MASK)\
 		and (lhs & _Y_MASK) > (rhs & _Y_MASK)\
 		and (lhs & _Z_MASK) > (rhs & _Z_MASK)
-## Greater Than or Equal >=
-## Return true if all components of @lhs is greater than @rhs counterpart
+		
+## Return true if all components of [param lhs] 
+## is greater or equal to [param rhs] counterparts.[br]
 static func ge(lhs: int, rhs: int) -> bool:
 	return (lhs & _X_MASK) >= (rhs & _X_MASK)\
 		and (lhs & _Y_MASK) >= (rhs & _Y_MASK)\
 		and (lhs & _Z_MASK) >= (rhs & _Z_MASK)
-## Less Than <
-## Return true if all components of @lhs is less than @rhs counterpart
+		
+## Return true if all components of [param lhs] 
+## is less than [param rhs] counterparts.[br]
 static func lt(lhs: int, rhs: int) -> bool:
 	return (lhs & _X_MASK) < (rhs & _X_MASK)\
 		and (lhs & _Y_MASK) < (rhs & _Y_MASK)\
 		and (lhs & _Z_MASK) < (rhs & _Z_MASK)
-## Less Than or Equal <=
-## Return true if all components of @lhs is less than or equal to @rhs counterpart
+
+## Return true if all components of [param lhs] 
+## is less or equal to [param rhs] counterparts.[br]
 static func le(lhs: int, rhs: int) -> bool:
 	return (lhs & _X_MASK) <= (rhs & _X_MASK)\
 		and (lhs & _Y_MASK) <= (rhs & _Y_MASK)\
 		and (lhs & _Z_MASK) <= (rhs & _Z_MASK)
 
 
-#### IMPLEMENTATION DETAILS ####
-
-## Encode a value using Magic Bits algorithm
+# Encode a value using Magic Bits algorithm.[br]
 static func _encodeMB64(x: int) -> int:
 	x &= 0x1FFFFF
 	x = (x ^ (x<<32)) & 0b00000000_00011111_00000000_00000000_00000000_00000000_11111111_11111111
@@ -119,7 +134,7 @@ static func _encodeMB64(x: int) -> int:
 	return x
 
 
-## Decode a value using Magic Bits algorithm
+# Decode a value using Magic Bits algorithm.[br]
 static func _decodeMB64(x: int) -> int:
 	x &= _INTERPOSITION
 	x = (x ^ (x>>2))  & 0b00010000_11000011_00001100_00110000_11000011_00001100_00110000_11000011
@@ -166,7 +181,6 @@ static func _automated_test():
 
 
 const _INTERPOSITION = 0b001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001_001
-
 const _Z_MASK = _INTERPOSITION << 2
 const _Y_MASK = _INTERPOSITION << 1
 const _X_MASK = _INTERPOSITION
