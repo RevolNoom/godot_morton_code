@@ -13,7 +13,3 @@ Morton code arithmetics ported from:
 
 - https://github.com/aavenel/mortonlib
 - https://www.forceflow.be/2013/10/07/morton-encodingdecoding-through-bit-interleaving-implementations/[br]
-
-Tests written with Godot Unit Test:
-
-- https://github.com/bitwes/Gut
